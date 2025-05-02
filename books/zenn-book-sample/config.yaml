@@ -1,0 +1,9 @@
+title: "Zennの使い方ガイド"
+summary: "Zennを使った技術記事や本の作成方法について解説する本"
+topics: ["zenn", "markdown", "publishing"]
+published: true
+price: 0 # 有料の場合は500〜5000
+# 本に含めるチャプターを順番に並べましょう
+chapters:
+  - chapter1
+  - chapter2

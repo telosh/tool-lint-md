@@ -2,11 +2,12 @@
   "name": "tool-lint-mdx",
   "version": "1.0.0",
   "description": "mdxファイルのプロパティ部分を成型や記述内容のチェックを行えるlint script",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint:mdx": "ts-node scripts/lint-mdx.ts",
-    "lint:mdx:fix": "ts-node scripts/lint-mdx.ts --fix"
+    "lint:mdx:fix": "ts-node scripts/lint-mdx.ts --fix",
+    "lint:zenn": "ts-node scripts/lint-zenn.ts",
+    "lint:zenn:fix": "ts-node scripts/lint-zenn.ts --fix"
   },
   "repository": {
     "type": "git",
@@ -21,9 +22,14 @@
   "homepage": "https://github.com/telosh/tool-lint-mdx#readme",
   "devDependencies": {
     "@types/glob": "^8.1.0",
+    "@types/js-yaml": "^4.0.9",
     "glob": "^11.0.2",
     "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "zenn-cli": "^0.1.159"
   }
 }

@@ -4,9 +4,9 @@ import matter from "gray-matter";
 import * as glob from "glob";
 
 /**
- * MDX フロントマターリンター
+ * Zenn Frontmatter Linter
  *
- * このスクリプトは、contentディレクトリ内のMDXファイルのフロントマタープロパティを
+ * このスクリプトは、Zenn向けの記事(articles)および本(books)のフロントマタープロパティを
  * 検証・整形するためのツールです。
  *
  * 機能:
@@ -16,8 +16,8 @@ import * as glob from "glob";
  * 4. カスタム設定ファイルのサポート
  *
  * 使用方法:
- * - 検証のみ: npm run lint:mdx または ts-node scripts/lint-mdx.ts
- * - 自動修正: npm run lint:mdx:fix または ts-node scripts/lint-mdx.ts --fix
+ * - 検証のみ: npm run lint:zenn または ts-node scripts/lint-zenn.ts
+ * - 自動修正: npm run lint:zenn:fix または ts-node scripts/lint-zenn.ts --fix
  */
 
 // 設定インターフェース
@@ -37,30 +37,27 @@ const DEFAULT_CONFIG: LintConfig = {
   // フロントマタープロパティの推奨順序
   propertyOrder: [
     "title",
-    "date",
-    "description",
-    "tags",
-    "category",
-    "image",
-    "recommended",
-    "status",
-    "draft",
+    "emoji",
+    "type",
+    "topics",
+    "published",
+    "published_at"
   ],
   
   // コンテンツタイプ別の必須プロパティ
   requiredProperties: {
-    blog: ["title", "date", "description", "tags", "category", "image", "status"],
-    snippet: ["title", "date", "description", "tags", "image", "status"],
-    default: ["title", "date", "description"]
+    article: ["title", "emoji", "type", "topics", "published"],
+    book: ["title", "summary", "published"],
+    default: ["title", "published"]
   },
   
   // 検索パターン
-  contentPattern: "content/**/*.mdx",
+  contentPattern: "articles/**/*.md",
   
   // コンテンツタイプ判定パターン
   contentTypePatterns: {
-    blog: ["/blog/", "\\blog\\"],
-    snippet: ["/snippet/", "\\snippet\\"]
+    article: ["articles/"],
+    book: ["books/"]
   }
 };
 
@@ -109,11 +106,11 @@ function getContentType(filePath: string): string {
 }
 
 /**
- * MDXファイルのフロントマターを検証する
+ * マークダウンファイルのフロントマターを検証する
  * @param filePath 検証対象のファイルパス
  * @returns 検証結果、またはエラー時はnull
  */
-function lintMdxFrontmatter(filePath: string): LintResult | null {
+function lintZennFrontmatter(filePath: string): LintResult | null {
   try {
     const content = fs.readFileSync(filePath, "utf8");
     const { data } = matter(content);
@@ -156,13 +153,13 @@ function lintMdxFrontmatter(filePath: string): LintResult | null {
 }
 
 /**
- * MDXファイルのフロントマタープロパティを推奨順序に並べ替える
+ * マークダウンファイルのフロントマタープロパティを推奨順序に並べ替える
  * @param filePath 対象ファイルのパス
  */
 function sortFrontmatter(filePath: string): void {
   try {
     const content = fs.readFileSync(filePath, "utf8");
-    const { data, content: mdxContent } = matter(content);
+    const { data, content: mdContent } = matter(content);
     const propertyOrder = config.propertyOrder || [];
 
     // 推奨順序に基づいた新しいオブジェクトを作成
@@ -183,7 +180,7 @@ function sortFrontmatter(filePath: string): void {
     });
 
     // ファイルに書き戻す
-    const newContent = matter.stringify(mdxContent, sortedData);
+    const newContent = matter.stringify(mdContent, sortedData);
     fs.writeFileSync(filePath, newContent);
 
     console.log(`✅ ${path.basename(filePath)} の順序を修正しました`);
@@ -196,16 +193,26 @@ function sortFrontmatter(filePath: string): void {
  * メイン処理
  */
 function main() {
-  console.log('MDX フロントマターリンターを実行しています...');
+  console.log('Zenn フロントマターリンターを実行しています...');
   
   // --fixオプションの確認
   const fix = process.argv.includes("--fix");
-  // MDXファイルの検索
-  const contentPattern = config.contentPattern || "content/**/*.mdx";
-  const mdxFiles = glob.glob.sync(contentPattern);
+  
+  // 記事と本のファイルを検索
+  const contentPatterns = [
+    config.contentPattern || "articles/**/*.md",
+    "books/**/*.md"  // 本のチャプターも検証
+  ];
+  
+  let mdFiles: string[] = [];
+  
+  contentPatterns.forEach(pattern => {
+    const files = glob.glob.sync(pattern);
+    mdFiles = [...mdFiles, ...files];
+  });
 
-  if (mdxFiles.length === 0) {
-    console.log(`警告: "${contentPattern}" にマッチするMDXファイルが見つかりませんでした`);
+  if (mdFiles.length === 0) {
+    console.log(`警告: Zenn記事または本のファイルが見つかりませんでした。"articles/"および"books/"ディレクトリが存在しているか確認してください。`);
     return;
   }
 
@@ -213,8 +220,8 @@ function main() {
   const results: LintResult[] = [];
 
   // 各ファイルの検証
-  mdxFiles.forEach((file) => {
-    const result = lintMdxFrontmatter(file);
+  mdFiles.forEach((file) => {
+    const result = lintZennFrontmatter(file);
     if (!result) return;
 
     if (result.missing.length > 0 || result.wrongOrder) {
@@ -259,7 +266,7 @@ function main() {
     }
   } else {
     console.log(
-      "\n✅ すべてのMDXファイルのフロントマタープロパティが有効で、順序も正しいです。"
+      "\n✅ すべてのZennファイルのフロントマタープロパティが有効で、順序も正しいです。"
     );
   }
 

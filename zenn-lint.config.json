@@ -9,12 +9,20 @@
   ],
   "requiredProperties": {
     "article": ["title", "emoji", "type", "topics", "published"],
-    "book": ["title", "summary", "published"],
+    "bookChapter": ["title"],
     "default": ["title", "published"]
   },
+  "bookConfigRequiredProperties": [
+    "title",
+    "summary",
+    "topics",
+    "published",
+    "price",
+    "chapters"
+  ],
   "contentPattern": "articles/**/*.md",
   "contentTypePatterns": {
     "article": ["articles/"],
-    "book": ["books/"]
+    "bookChapter": ["books/"]
   }
 } 
