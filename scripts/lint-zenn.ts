@@ -64,8 +64,8 @@ const DEFAULT_CONFIG: LintConfig = {
 // 設定の読み込み
 let config: LintConfig = DEFAULT_CONFIG;
 try {
-  if (fs.existsSync('./mdx-lint.config.json')) {
-    const userConfig = JSON.parse(fs.readFileSync('./mdx-lint.config.json', 'utf8'));
+  if (fs.existsSync('./zenn-lint.config.json')) {
+    const userConfig = JSON.parse(fs.readFileSync('./zenn-lint.config.json', 'utf8'));
     config = { ...DEFAULT_CONFIG, ...userConfig };
     console.log('カスタム設定ファイルを読み込みました');
   }
