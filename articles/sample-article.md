@@ -1,6 +1,6 @@
 ---
 title: Zennリンターのサンプル記事
-emoji: "\U0001F527"
+emoji: "👏"
 type: tech
 topics:
   - zenn
