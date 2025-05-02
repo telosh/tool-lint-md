@@ -84,9 +84,4 @@ npx ts-node scripts/lint-mdx.ts --fix
 | `contentTypePatterns` | コンテンツタイプ判定用のパターン |
 
 ## ライセンス
-
-ISC
-
-## 作者
-
-Your Name
+MIT?
