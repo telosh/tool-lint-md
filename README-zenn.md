@@ -2,12 +2,18 @@
 
 このツールは、Zenn向けの記事（articles）および本（books）のフロントマタープロパティを検証・整形するためのNode.jsスクリプトです。
 
+> **注意**: より詳細かつ最新の情報は [メインREADME](./README.md) を参照してください。
+
 ## 機能
 
 1. フロントマタープロパティの必須チェック (コンテンツタイプ別)
 2. プロパティの順序チェック
-3. 自動修正機能 (--fixオプション付きで実行時)
-4. カスタム設定ファイルのサポート
+3. slugの形式チェック
+4. 本のconfig.yamlのチェック
+5. 章の番号付けとファイル名のチェック
+6. 自動修正機能 (`--fix` オプション付きで実行時)
+7. カスタム設定ファイルのサポート
+8. テスト機能 (`--test` オプションで実行可能)
 
 ## 使用方法
 
@@ -33,9 +39,14 @@ npm run lint:zenn
 npm run lint:zenn:fix
 ```
 
+- テストモード（スクリプトの動作確認）:
+```bash
+npx ts-node scripts/lint-zenn.ts --test
+```
+
 ### 設定ファイル
 
-デフォルトの設定は`zenn-lint.config.json`に保存されています。このファイルをカスタマイズして、独自の要件に合わせて設定を変更できます。
+デフォルトの設定をカスタマイズするには、`zenn-lint.config.json`ファイルをプロジェクトのルートディレクトリに作成します。
 
 #### 設定例
 ```json
@@ -50,13 +61,21 @@ npm run lint:zenn:fix
   ],
   "requiredProperties": {
     "article": ["title", "emoji", "type", "topics", "published"],
-    "book": ["title", "summary", "published"],
+    "bookChapter": ["title"],
     "default": ["title", "published"]
   },
+  "bookConfigRequiredProperties": [
+    "title",
+    "summary",
+    "topics",
+    "published",
+    "price",
+    "chapters"
+  ],
   "contentPattern": "articles/**/*.md",
   "contentTypePatterns": {
     "article": ["articles/"],
-    "book": ["books/"]
+    "bookChapter": ["books/"]
   }
 }
 ```
