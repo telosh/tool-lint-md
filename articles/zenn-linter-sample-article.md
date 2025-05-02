@@ -1,11 +1,8 @@
 ---
 title: Zennリンターのサンプル記事
 emoji: "👏"
-type: tech
-topics:
-  - zenn
-  - typescript
-  - linter
+type: "tech"
+topics: [Zenn, MDX, Linter]
 published: true
 ---
 
