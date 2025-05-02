@@ -1,0 +1,23 @@
+{
+  "propertyOrder": [
+    "title",
+    "date",
+    "description",
+    "tags",
+    "category",
+    "image",
+    "recommended",
+    "status",
+    "draft"
+  ],
+  "requiredProperties": {
+    "blog": ["title", "date", "description", "tags", "category", "image", "status"],
+    "snippet": ["title", "date", "description", "tags", "status"],
+    "default": ["title", "date", "description"]
+  },
+  "contentPattern": "content/**/*.mdx",
+  "contentTypePatterns": {
+    "blog": ["/blog/", "\\blog\\"],
+    "snippet": ["/snippet/", "\\snippet\\"]
+  }
+} 
