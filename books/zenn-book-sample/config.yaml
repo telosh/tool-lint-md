@@ -5,7 +5,5 @@ published: true
 price: 0 # 有料の場合は500〜5000
 # 本に含めるチャプターを順番に並べましょう
 chapters:
-  - title: "はじめに"
-    file: chapter1.md
-  - title: "Zenn CLIのインストール"
-    file: chapter2.md 
+  - chapter1
+  - chapter2

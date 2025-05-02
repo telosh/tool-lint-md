@@ -440,14 +440,253 @@ function getBookDirectories(): string[] {
 }
 
 /**
- * メイン処理
+ * テスト用のサンプルファイルを作成する
+ * @param targetDir 作成先ディレクトリ
+ * @returns テスト用ディレクトリのパス
  */
-function main() {
-  console.log('Zenn フロントマターリンターを実行しています...');
+function createTestSamples(targetDir: string): string {
+  // テスト用ディレクトリの作成
+  const testDir = path.join(targetDir, 'zenn-test');
+  const articlesDir = path.join(testDir, 'articles');
+  const booksDir = path.join(testDir, 'books');
+  const bookChaptersDir = path.join(booksDir, 'test-book');
   
-  // --fixオプションの確認
-  const fix = process.argv.includes("--fix");
+  // ディレクトリが存在する場合は削除して再作成
+  if (fs.existsSync(testDir)) {
+    fs.rmSync(testDir, { recursive: true, force: true });
+  }
   
+  fs.mkdirSync(articlesDir, { recursive: true });
+  fs.mkdirSync(bookChaptersDir, { recursive: true });
+  
+  // 正常な記事ファイル
+  const validArticle = `---
+title: "正常な記事"
+emoji: "📝"
+type: "tech"
+topics: ["zenn", "markdown"]
+published: true
+---
+
+これは正常な記事です。`;
+
+  // 問題のある記事ファイル（必須プロパティ欠落）
+  const invalidArticleMissingProps = `---
+title: "問題のある記事"
+emoji: "⚠️"
+---
+
+必須プロパティが欠けています。`;
+
+  // 問題のある記事ファイル（順序不正）
+  const invalidArticleWrongOrder = `---
+published: true
+emoji: "🔄"
+title: "順序が違う記事"
+type: "tech"
+topics: ["zenn", "test"]
+---
+
+プロパティの順序が正しくありません。`;
+
+  // スラッグが不正な記事のファイル名は12文字未満
+  const invalidSlugArticle = `---
+title: "スラッグが不正な記事"
+emoji: "🔤"
+type: "tech"
+topics: ["zenn", "test"]
+published: true
+---
+
+スラッグが短すぎます。`;
+
+  // 正常な本の設定ファイル
+  const validBookConfig = `title: "正常な本"
+summary: "これは正常な本のサンプルです"
+topics: ["zenn", "book"]
+published: true
+price: 0
+chapters:
+  - file: 1.intro.md
+    title: "はじめに"
+  - file: 2.main.md
+    title: "本編"
+  - file: 3.conclusion.md
+    title: "まとめ"
+`;
+
+  // 問題のある本の設定ファイル（必須プロパティ欠落）
+  const invalidBookConfigMissingProps = `title: "問題のある本"
+topics: ["zenn"]
+`;
+
+  // 正常な本のチャプターファイル
+  const validChapter = `---
+title: "正常なチャプター"
+---
+
+これは正常なチャプターです。`;
+  
+  // 問題のあるチャプターファイル（必須プロパティ欠落）
+  const invalidChapter = `---
+---
+
+タイトルがありません。`;
+
+  // ファイル作成
+  fs.writeFileSync(path.join(articlesDir, 'valid-article-sample.md'), validArticle);
+  fs.writeFileSync(path.join(articlesDir, 'invalid-missing-props.md'), invalidArticleMissingProps);
+  fs.writeFileSync(path.join(articlesDir, 'invalid-wrong-order.md'), invalidArticleWrongOrder);
+  fs.writeFileSync(path.join(articlesDir, 'bad.md'), invalidSlugArticle);
+  
+  fs.writeFileSync(path.join(bookChaptersDir, 'config.yaml'), validBookConfig);
+  fs.writeFileSync(path.join(bookChaptersDir, '1.intro.md'), validChapter);
+  fs.writeFileSync(path.join(bookChaptersDir, '2.main.md'), validChapter);
+  fs.writeFileSync(path.join(bookChaptersDir, '3.conclusion.md'), invalidChapter);
+  
+  // 問題のある本のディレクトリ
+  const invalidBookDir = path.join(booksDir, 'invalid-book');
+  fs.mkdirSync(invalidBookDir, { recursive: true });
+  fs.writeFileSync(path.join(invalidBookDir, 'config.yaml'), invalidBookConfigMissingProps);
+  fs.writeFileSync(path.join(invalidBookDir, '1.chapter.md'), validChapter);
+  
+  // 設定ファイルのない本のディレクトリ
+  const noConfigBookDir = path.join(booksDir, 'no-config-book');
+  fs.mkdirSync(noConfigBookDir, { recursive: true });
+  fs.writeFileSync(path.join(noConfigBookDir, '1.chapter.md'), validChapter);
+
+  console.log(`テスト用サンプルを ${testDir} に作成しました`);
+  
+  return testDir;
+}
+
+/**
+ * テストを実行する
+ */
+function runTests(): void {
+  console.log('Zenn フロントマターリンターのテストを実行しています...');
+  
+  // テスト用サンプルの作成
+  const testDir = createTestSamples(process.cwd());
+  
+  // 元の設定を保存
+  const originalContentPattern = config.contentPattern;
+  const originalContentTypePatterns = { ...config.contentTypePatterns };
+  
+  // テスト用の設定に変更
+  config.contentPattern = path.join(testDir, 'articles/**/*.md');
+  config.contentTypePatterns = {
+    article: [path.join(testDir, 'articles/')],
+    bookChapter: [path.join(testDir, 'books/')]
+  };
+  
+  // テスト用の引数を保存
+  const originalArgv = [...process.argv];
+  let exitCode = 0;
+  let testPassed = true;
+
+  console.log('\n==========================================');
+  console.log('1. 検証テスト: エラーが検出されるはず');
+  console.log('==========================================');
+  
+  // process.exitを一時的にモック
+  const originalExit = process.exit;
+  process.exit = ((code: number) => {
+    exitCode = code;
+    console.log(`Exit code: ${code}`);
+    return undefined as never;
+  }) as (code?: number) => never;
+
+  try {
+    // テスト用引数
+    process.argv = [...originalArgv.filter(arg => arg !== '--test')];
+    
+    // 検証のみを実行
+    runMainWithoutExit();
+    
+    // エラーが検出されてexit(1)が呼ばれるはず
+    if (exitCode !== 1) {
+      console.log('❌ テスト失敗: エラーが検出されませんでした');
+      testPassed = false;
+    } else {
+      console.log('✅ テスト成功: 期待通りのエラーが検出されました');
+    }
+  } catch (e) {
+    console.error('❌ テスト実行中にエラーが発生しました:', e);
+    testPassed = false;
+  }
+
+  console.log('\n==========================================');
+  console.log('2. 修正テスト: エラーが修正されるはず');
+  console.log('==========================================');
+  
+  try {
+    // テスト用引数
+    process.argv = [...originalArgv.filter(arg => arg !== '--test'), '--fix'];
+    exitCode = 0;
+    
+    // 修正を実行
+    runMainWithoutExit();
+    
+    // 修正モードなので正常終了するはず
+    if (exitCode !== 0) {
+      console.log('❌ テスト失敗: 修正に失敗しました');
+      testPassed = false;
+    } else {
+      console.log('✅ テスト成功: 修正が完了しました');
+    }
+  } catch (e) {
+    console.error('❌ テスト実行中にエラーが発生しました:', e);
+    testPassed = false;
+  }
+
+  console.log('\n==========================================');
+  console.log('3. 再検証テスト: 一部エラーが残るはず（必須プロパティなど自動修正できないもの）');
+  console.log('==========================================');
+  
+  try {
+    // テスト用引数
+    process.argv = [...originalArgv.filter(arg => arg !== '--test')];
+    exitCode = 0;
+    
+    // 再検証を実行
+    runMainWithoutExit();
+    
+    // エラーが検出されてexit(1)が呼ばれるはず
+    if (exitCode !== 1) {
+      console.log('❌ テスト失敗: 残りのエラーが検出されませんでした');
+      testPassed = false;
+    } else {
+      console.log('✅ テスト成功: 期待通りの残りエラーが検出されました');
+    }
+  } catch (e) {
+    console.error('❌ テスト実行中にエラーが発生しました:', e);
+    testPassed = false;
+  }
+  
+  // 設定と引数を元に戻す
+  config.contentPattern = originalContentPattern;
+  config.contentTypePatterns = originalContentTypePatterns;
+  process.argv = originalArgv;
+  process.exit = originalExit;
+  
+  console.log('\n==========================================');
+  console.log(testPassed ? '✅ 全てのテストに成功しました！' : '❌ 一部のテストに失敗しました');
+  console.log('==========================================');
+  
+  // テスト用ディレクトリの削除
+  try {
+    fs.rmSync(testDir, { recursive: true, force: true });
+    console.log(`テスト用ディレクトリを削除しました: ${testDir}`);
+  } catch (e) {
+    console.warn(`テスト用ディレクトリの削除に失敗しました: ${e}`);
+  }
+}
+
+/**
+ * process.exitを呼ばずにmain処理を実行する
+ */
+function runMainWithoutExit(): void {
   // 記事ファイルの検索
   const articlePattern = config.contentPattern || "articles/**/*.md";
   const articleFiles = glob.glob.sync(articlePattern);
@@ -478,7 +717,7 @@ function main() {
       hasErrors = true;
 
       // --fixオプションが指定されていれば自動修正
-      if (fix && result.wrongOrder) {
+      if (process.argv.includes("--fix") && result.wrongOrder) {
         sortFrontmatter(file);
       }
     }
@@ -515,7 +754,7 @@ function main() {
         console.log(`  現在の順序: ${result.currentOrder.join(", ")}`);
         console.log(`  推奨順序: ${config.propertyOrder.join(", ")}`);
   
-        if (fix) {
+        if (process.argv.includes("--fix")) {
           console.log("  ✅ 順序を自動的に修正しました");
         }
       }
@@ -554,7 +793,7 @@ function main() {
     });
   }
   
-  if (resultsShown && !fix) {
+  if (resultsShown && !process.argv.includes("--fix")) {
     console.log(
       "\n--fix オプションを付けて実行すると、フロントマターのプロパティ順序を自動修正できます。"
     );
@@ -565,9 +804,24 @@ function main() {
   }
 
   // エラーがあり、かつ自動修正していない場合はエラーコードで終了
-  if (hasErrors && !fix) {
+  if (hasErrors && !process.argv.includes("--fix")) {
     process.exit(1);
   }
+}
+
+/**
+ * メイン処理
+ */
+function main() {
+  // テストモードの確認
+  if (process.argv.includes("--test")) {
+    runTests();
+    return;
+  }
+  
+  console.log('Zenn フロントマターリンターを実行しています...');
+  
+  runMainWithoutExit();
 }
 
 main(); 
