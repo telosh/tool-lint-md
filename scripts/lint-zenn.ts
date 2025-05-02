@@ -95,8 +95,11 @@ interface FrontmatterData {
 function getContentType(filePath: string): string {
   const typePatterns = config.contentTypePatterns || {};
   
+  // Windows向けにファイルパスの区切り文字を統一
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  
   for (const [type, patterns] of Object.entries(typePatterns)) {
-    if (Array.isArray(patterns) && patterns.some(pattern => filePath.includes(pattern))) {
+    if (Array.isArray(patterns) && patterns.some(pattern => normalizedPath.includes(pattern))) {
       return type;
     }
   }

@@ -1,9 +1,12 @@
 ---
-title: "Zennリンターのサンプル記事"
+title: Zennリンターのサンプル記事
+emoji: "\U0001F527"
+type: tech
+topics:
+  - zenn
+  - typescript
+  - linter
 published: true
-type: "tech"
-emoji: "🔧"
-topics: ["zenn", "typescript", "linter"]
 ---
 
 # Zennリンターのサンプル記事

@@ -1,5 +1,6 @@
 ---
 title: "サンプルチャプター"
+summary: "サンプル本のチャプター概要"
 published: true
 ---
 
