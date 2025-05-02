@@ -15,8 +15,9 @@ import yaml from "js-yaml";
  * 2. プロパティの順序チェック
  * 3. slugの形式チェック
  * 4. 本のconfig.yamlのチェック
- * 5. 自動修正機能 (--fixオプション付きで実行時)
- * 6. カスタム設定ファイルのサポート
+ * 5. 章の番号付けとファイル名のチェック
+ * 6. 自動修正機能 (--fixオプション付きで実行時)
+ * 7. カスタム設定ファイルのサポート
  *
  * 使用方法:
  * - 検証のみ: npm run lint:zenn または ts-node scripts/lint-zenn.ts
@@ -105,6 +106,8 @@ interface BookConfigLintResult {
   missingConfigFile: boolean; // config.yamlが存在しないかどうか
   invalidChapters?: boolean; // チャプター設定が無効かどうか
   chaptersError?: string; // チャプターエラーの詳細
+  duplicateChapterSlug?: boolean; // 重複したチャプタースラッグがあるかどうか
+  duplicateChapterNames?: string[]; // 重複したチャプター名のリスト
 }
 
 // フロントマターデータの型定義
@@ -145,6 +148,17 @@ function isValidSlug(slug: string): boolean {
 }
 
 /**
+ * ファイル名がチャプター番号形式かどうかをチェックする
+ * 形式: 数字.スラッグ.md
+ * @param fileName ファイル名
+ * @returns 
+ */
+function isNumberedChapterFileName(fileName: string): boolean {
+  const chapterNumberPattern = /^\d+\.[a-z0-9_-]+\.md$/;
+  return chapterNumberPattern.test(fileName);
+}
+
+/**
  * ファイルパスからスラッグを抽出する
  * @param filePath ファイルパス
  * @returns スラッグ
@@ -152,6 +166,21 @@ function isValidSlug(slug: string): boolean {
 function extractSlugFromPath(filePath: string): string {
   // ファイル名を取得（拡張子なし）
   const fileName = path.basename(filePath, path.extname(filePath));
+  return fileName;
+}
+
+/**
+ * 番号付きチャプターファイル名からスラッグ部分を抽出する
+ * 例: "1.intro.md" -> "intro"
+ * @param fileName ファイル名
+ * @returns スラッグ部分
+ */
+function extractSlugFromNumberedChapter(fileName: string): string {
+  // 数字.スラッグ.md の形式から、スラッグ部分を抽出
+  const match = fileName.match(/^\d+\.([a-z0-9_-]+)\.md$/);
+  if (match && match[1]) {
+    return match[1];
+  }
   return fileName;
 }
 
@@ -245,16 +274,27 @@ function lintBookConfig(bookDir: string): BookConfigLintResult {
     
     result.missing = missingProps;
 
-    // chapters配列のチェック
+    // chaptersの配列形式チェック
     if ('chapters' in configData) {
       const chapters = configData.chapters;
-      if (!Array.isArray(chapters)) {
+      
+      // chapters が配列かどうかチェック
+      if (chapters !== null && typeof chapters !== 'undefined' && !Array.isArray(chapters)) {
         result.invalidChapters = true;
         result.chaptersError = 'chaptersプロパティは配列である必要があります。';
-      } else if (chapters.length === 0) {
-        result.invalidChapters = true;
-        result.chaptersError = 'chaptersプロパティは少なくとも1つの章を含む必要があります。';
-      } else {
+        return result;
+      }
+      
+      // chapters が空配列の場合は、番号付きファイル名での順序付けを使用する
+      // これは有効な使用方法なのでエラーとしない
+      if (Array.isArray(chapters) && chapters.length === 0) {
+        // ファイル名の番号での順序付けをチェック
+        checkNumberedChapterFiles(bookDir, result);
+        return result;
+      }
+      
+      // chapters に要素がある場合は、各チャプターを検証
+      if (Array.isArray(chapters) && chapters.length > 0) {
         // 各チャプターがfile, titleプロパティを持っているかチェック
         const invalidChapter = chapters.find((chapter: any) => 
           typeof chapter !== 'object' || !('file' in chapter) || !('title' in chapter)
@@ -264,6 +304,28 @@ function lintBookConfig(bookDir: string): BookConfigLintResult {
           result.invalidChapters = true;
           result.chaptersError = '各チャプターは file および title プロパティを持つ必要があります。';
         }
+        
+        // 重複したスラッグがないかチェック
+        const slugs = new Set<string>();
+        const duplicateSlugs: string[] = [];
+        
+        if (Array.isArray(chapters)) {
+          chapters.forEach((chapter: any) => {
+            if (chapter && chapter.file) {
+              const slug = path.basename(chapter.file, path.extname(chapter.file));
+              if (slugs.has(slug)) {
+                duplicateSlugs.push(slug);
+              } else {
+                slugs.add(slug);
+              }
+            }
+          });
+        }
+        
+        if (duplicateSlugs.length > 0) {
+          result.duplicateChapterSlug = true;
+          result.duplicateChapterNames = duplicateSlugs;
+        }
       }
     }
 
@@ -272,6 +334,55 @@ function lintBookConfig(bookDir: string): BookConfigLintResult {
     console.error(`${configPath} の処理中にエラーが発生しました:`, error);
     result.missing = config.bookConfigRequiredProperties; // 全てのプロパティが不足しているとみなす
     return result;
+  }
+}
+
+/**
+ * 番号付きチャプターファイルをチェックする
+ * @param bookDir 本のディレクトリパス
+ * @param result 検証結果
+ */
+function checkNumberedChapterFiles(bookDir: string, result: BookConfigLintResult): void {
+  // ディレクトリ内のmdファイルを取得
+  const mdFiles = fs.readdirSync(bookDir)
+    .filter(file => file.endsWith('.md'))
+    .sort();
+  
+  if (mdFiles.length === 0) {
+    result.invalidChapters = true;
+    result.chaptersError = 'チャプターとなるMarkdownファイルが見つかりません。';
+    return;
+  }
+  
+  // 全てのファイルが番号付き形式かチェック
+  const nonNumberedFiles = mdFiles.filter(file => !isNumberedChapterFileName(file));
+  
+  if (nonNumberedFiles.length > 0 && nonNumberedFiles.length !== mdFiles.length) {
+    result.invalidChapters = true;
+    result.chaptersError = '一部のファイルのみが番号付き形式（数字.スラッグ.md）になっています。全てのファイルを統一してください。';
+    return;
+  }
+  
+  // 重複したスラッグがないかチェック
+  const slugs = new Set<string>();
+  const duplicateSlugs: string[] = [];
+  
+  mdFiles.forEach(file => {
+    if (isNumberedChapterFileName(file)) {
+      const slug = extractSlugFromNumberedChapter(file);
+      if (slugs.has(slug)) {
+        duplicateSlugs.push(slug);
+      } else {
+        slugs.add(slug);
+      }
+    }
+  });
+  
+  if (duplicateSlugs.length > 0) {
+    result.duplicateChapterSlug = true;
+    result.duplicateChapterNames = duplicateSlugs;
+    result.invalidChapters = true;
+    result.chaptersError = '複数のチャプターで同じスラッグが使用されています: ' + duplicateSlugs.join(', ');
   }
 }
 
@@ -376,7 +487,7 @@ function main() {
   // 本のconfig.yamlを検証
   bookDirs.forEach(dir => {
     const result = lintBookConfig(dir);
-    if (result.missing.length > 0 || result.missingConfigFile || result.invalidChapters) {
+    if (result.missing.length > 0 || result.missingConfigFile || result.invalidChapters || result.duplicateChapterSlug) {
       bookConfigResults.push(result);
       hasErrors = true;
     }
@@ -427,13 +538,18 @@ function main() {
         console.log("  config.yamlファイルが見つかりません");
       }
       
-      // 必須プロパティのチェック
-      if (result.dir.includes("zenn-book-sample")) {
-        console.log("  必須プロパティが不足しています: price");
+      if (result.missing && result.missing.length > 0) {
+        console.log(`  必須プロパティが不足しています: ${result.missing.join(", ")}`);
       }
 
       if (result.invalidChapters) {
         console.log(`  ${result.chaptersError}`);
+      }
+
+      if (result.duplicateChapterSlug) {
+        // duplicateChapterNamesがundefinedでないことを確認
+        const duplicateNames = result.duplicateChapterNames || [];
+        console.log(`  複数のチャプターで同じスラッグが使用されています: ${duplicateNames.join(", ")}`);
       }
     });
   }

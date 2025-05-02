@@ -1,0 +1,7 @@
+title: "Zennのチャプター番号機能サンプル"
+summary: "ファイル名で章番号を指定する方法のサンプル"
+topics: ["zenn", "markdown", "publishing"]
+published: true
+price: 0
+# 空のchaptersでファイル名の番号による順序付けを使用
+chapters: [] 
