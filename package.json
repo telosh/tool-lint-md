@@ -2,7 +2,6 @@
   "name": "tool-lint-mdx",
   "version": "1.0.0",
   "description": "mdxファイルのプロパティ部分を成型や記述内容のチェックを行えるlint script",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint:mdx": "ts-node scripts/lint-mdx.ts",
