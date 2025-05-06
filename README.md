@@ -80,10 +80,8 @@ topics: ["markdown", "zenn", "npm"] # トピック（5つまで）
 published: true # 公開設定（falseで下書き）
 price: 0 # 無料の場合は0、有料の場合は500〜5000
 chapters:
-  - title: "チャプター1のタイトル"
-    file: chapter1.md
-  - title: "チャプター2のタイトル"
-    file: chapter2.md
+  - chapter1
+  - chapter2
 ```
 
 ## カスタマイズ
